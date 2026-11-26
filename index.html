@@ -1,0 +1,1008 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Pembelajaran</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #0f0f0f;
+            color: white;
+        }
+        .sidebar-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .active-sidebar {
+            background-color: rgba(255, 255, 255, 0.15);
+            font-weight: bold;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #717171;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #sidebar {
+            transition: transform 0.3s ease-in-out, width 0.2s ease-in-out;
+            overflow-x: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 240px;
+                z-index: 1000;
+                transform: translateX(-100%);
+                display: block !important;
+                background-color: #0f0f0f;
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            #sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.6);
+                z-index: 999;
+            }
+            #sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        .hide-text .menu-text, .hide-text .section-title, .hide-text .sidebar-footer {
+            display: none;
+        }
+        .hide-text hr {
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .video-container {
+            display: none;
+        }
+        .playing .video-container {
+            display: block;
+        }
+        .playing .category-chips {
+            display: none;
+        }
+
+        /* Modal & Dropdown Styles */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: #282828;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            width: 320px;
+            z-index: 110;
+        }
+        .dropdown-menu.active {
+            display: block;
+        }
+        
+        /* Comment Styles */
+        #comment-actions {
+            display: none;
+        }
+        #comment-input:focus + #comment-underline {
+            transform: scaleX(1);
+        }
+        #comment-underline {
+            transform: scaleX(0);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        /* Description Expand Logic */
+        #video-description.collapsed {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Dynamic Full Mobile Screen Viewport Setup */
+        html {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+        }
+        
+        body {
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-color: #0f0f0f;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-container {
+            width: 100vw;
+            max-width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            flex: 1;
+            background-color: #0f0f0f;
+            position: relative;
+            box-shadow: none;
+            border: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #app-container {
+            flex: 1;
+            width: 100%;
+        }
+
+        /* Dynamic Video Container Fit for Mobile Screens */
+        .video-container {
+            width: 100%;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .video-container iframe {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Full Width Player Adjustment */
+        .playing #main-content {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            width: 100%;
+        }
+
+        .playing #video-player-section {
+            width: 100%;
+        }
+
+        .playing #video-player-section > div:not(:first-child) {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+
+        .playing #comments-section, 
+        .playing #dynamic-content,
+        .playing #categories {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased">
+  <div class="mobile-container">
+    <!-- Header / Navbar -->
+    <nav class="fixed top-0 left-0 right-0 h-14 bg-[#0f0f0f] flex items-center justify-between px-4 z-50">
+        <div class="flex items-center">
+            <button id="menu-btn" class="p-2 hover:bg-zinc-800 rounded-full text-xl mr-2">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="flex items-center cursor-pointer" onclick="location.reload()">
+                <i class="fab fa-youtube text-red-600 text-3xl"></i>
+                <span class="font-bold text-xl tracking-tighter ml-1 hidden sm:block">YouTube</span>
+                <span class="text-[10px] text-zinc-400 self-start mt-1 ml-1">ID</span>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="flex flex-grow max-w-[720px] items-center ml-2 md:ml-10">
+            <div class="flex flex-grow items-center bg-zinc-900 border border-zinc-700 rounded-l-full px-3 py-1.5 focus-within:border-blue-500">
+                <i class="fas fa-search text-zinc-400 mr-2 hidden sm:block"></i>
+                <input type="text" placeholder="Telusuri" class="bg-transparent outline-none w-full text-white text-xs sm:text-sm placeholder-zinc-400">
+            </div>
+            <button class="bg-zinc-800 border border-l-0 border-zinc-700 px-4 py-1.5 rounded-r-full hover:bg-zinc-700">
+                <i class="fas fa-search text-white text-xs sm:text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Right Side Icons -->
+        <div class="flex items-center space-x-2 sm:space-x-4 relative">
+            <button id="notif-btn" class="p-2 hover:bg-zinc-800 rounded-full relative">
+                <i class="fas fa-bell"></i>
+                <span id="notif-count" class="absolute top-1 right-1 bg-red-600 text-[10px] px-1 rounded-full">3</span>
+            </button>
+            <div id="notif-dropdown" class="dropdown-menu">
+                <div class="p-4 border-b border-zinc-700 flex justify-between items-center">
+                    <span class="font-bold text-white">Notifikasi</span>
+                    <i class="fas fa-cog text-zinc-400 cursor-pointer"></i>
+                </div>
+
+                <div class="max-h-[400px] overflow-y-auto custom-scrollbar">
+                    <div class="p-4 flex space-x-3 hover:bg-zinc-700 cursor-pointer border-b border-zinc-800/50">      
+                        <audio controls>
+                            <source src="https://www.dropbox.com/scl/fi/0fb5jjf5bponofbkjt128/01.-Bertahan-Di-Sana.mp3?rlkey=895ljljrjp6h65shxa31okuvt&st=imfqj3nj&dl=1" type="audio/mpeg">
+                            Browser Anda tidak mendukung elemen audio.
+                        </audio>       
+                    </div>
+
+                    <a href="https://youtube.com/@tutorial_anda" target="_blank" class="p-4 flex space-x-3 hover:bg-zinc-700 cursor-pointer border-b border-zinc-800/50 transition-colors block">
+                        <div class="w-12 h-12 bg-purple-500 rounded-full flex-shrink-0 overflow-hidden">
+                            <img src="https://i.pravatar.cc/150?u=design" alt="avatar">
+                        </div>
+                        <div class="flex-grow">
+                            <p class="text-sm text-zinc-200"><b>Creative Design</b> membagikan aset gratis: UI Kit Dark Mode</p>
+                            <p class="text-xs text-zinc-400 mt-1">5 jam yang lalu</p>
+                        </div>
+                    </a>
+
+                    <a href="https://google.com" target="_blank" class="p-4 flex space-x-3 hover:bg-zinc-700 cursor-pointer transition-colors block">
+                        <div class="w-12 h-12 bg-orange-500 rounded-full flex-shrink-0 overflow-hidden">
+                            <img src="https://i.pravatar.cc/150?u=promo" alt="avatar">
+                        </div>
+                        <div class="flex-grow">
+                            <p class="text-sm text-zinc-200"><b>Sistem</b>: Jangan lewatkan diskon 50% untuk langganan Pro!</p>
+                            <p class="text-xs text-zinc-400 mt-1">1 hari yang lalu</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center cursor-pointer ml-2">
+                <span class="text-sm font-medium">G</span>
+            </div>
+        </div>
+    </nav>
+
+    <div id="sidebar-overlay"></div>
+
+    <div class="flex pt-14" id="app-container">
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed left-0 bottom-0 top-14 w-60 bg-[#0f0f0f] overflow-y-auto custom-scrollbar hidden md:block z-40 pb-4">
+            <div class="flex items-center px-4 h-14 md:hidden">
+                <button id="menu-close-btn" class="p-2 hover:bg-zinc-800 rounded-full text-xl mr-2">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <i class="fab fa-youtube text-red-600 text-3xl"></i>
+                <span class="font-bold text-xl tracking-tighter ml-1">YouTube</span>
+            </div>
+
+            <div class="p-3 space-y-1">
+                <div class="sidebar-item active-sidebar flex items-center p-2 rounded-xl cursor-pointer" onclick="location.reload()">
+                    <i class="fas fa-house w-10 text-xl text-center"></i>
+                    <span class="menu-text ml-4">Beranda</span>
+                </div>
+                <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer">
+                    <i class="fab fa-youtube-square w-10 text-xl text-center"></i>
+                    <span class="menu-text ml-4">Shorts</span>
+                </div>
+                <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer">
+                    <i class="fas fa-clapperboard w-10 text-xl text-center"></i>
+                    <span class="menu-text ml-4">Subscription</span>
+                </div>
+            </div>
+
+            <hr class="border-zinc-700 my-3 mx-4">
+
+            <div class="p-3 space-y-1">
+                <div class="px-3 mb-2 font-bold menu-text text-base section-title">Cards Id Purwanto</div>
+                <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800">
+    <i class="fas fa-tower-broadcast w-10 text-xl text-center"></i>
+    <span class="menu-text ml-4">Live</span>
+</div>
+
+<div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800">
+    <i class="fas fa-chart-line w-10 text-xl text-center"></i>
+    <span class="menu-text ml-4">Statistik</span>
+</div>
+
+<div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800">
+    <i class="fas fa-comment-dots w-10 text-xl text-center"></i>
+    <span class="menu-text ml-4">Komentar</span>
+</div>
+
+<div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800">
+    <i class="fas fa-sack-dollar w-10 text-xl text-center"></i>
+    <span class="menu-text ml-4">Penghasilan</span>
+</div>
+
+<div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800">
+    <i class="fas fa-music w-10 text-xl text-center"></i>
+    <span class="menu-text ml-4">Koleksi Audio</span>
+</div>
+
+<div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800">
+    <i class="fas fa-gear w-10 text-xl text-center"></i>
+    <span class="menu-text ml-4">Setelan</span>
+</div>
+    </div>
+
+            <hr class="border-zinc-700 my-3 mx-4">
+
+            <div class="p-3 space-y-1">
+    <div class="px-3 mb-2 font-bold menu-text text-base section-title">Subscription</div>
+    
+    <!-- Sub 1 (Existing) -->
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800 transition">
+        <div class="w-6 h-6 rounded-full bg-zinc-700 mr-4 overflow-hidden">
+            <img src="https://i.pravatar.cc/150?u=sub1" alt="Tech Inside">
+        </div>
+        <span class="menu-text text-sm">Tech Inside</span>
+    </div>
+
+    <!-- 5 Sub Baru -->
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800 transition">
+        <div class="w-6 h-6 rounded-full bg-zinc-700 mr-4 overflow-hidden">
+            <img src="https://i.pravatar.cc" alt="Gadget Review">
+        </div>
+        <span class="menu-text text-sm">Gadget Review</span>
+    </div>
+
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800 transition">
+        <div class="w-6 h-6 rounded-full bg-zinc-700 mr-4 overflow-hidden">
+            <img src="https://i.pravatar.cc" alt="Cooking Master">
+        </div>
+        <span class="menu-text text-sm">Cooking Master</span>
+    </div>
+
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800 transition">
+        <div class="w-6 h-6 rounded-full bg-zinc-700 mr-4 overflow-hidden">
+            <img src="https://i.pravatar.cc" alt="Music Vibe">
+        </div>
+        <span class="menu-text text-sm">Music Vibe</span>
+    </div>
+
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800 transition">
+        <div class="w-6 h-6 rounded-full bg-zinc-700 mr-4 overflow-hidden">
+            <img src="https://i.pravatar.cc" alt="Daily Vlog">
+        </div>
+        <span class="menu-text text-sm">Daily Vlog</span>
+    </div>
+
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer hover:bg-zinc-800 transition">
+        <div class="w-6 h-6 rounded-full bg-zinc-700 mr-4 overflow-hidden">
+            <img src="https://i.pravatar.cc" alt="Gaming Indo">
+        </div>
+        <span class="menu-text text-sm">Gaming Indo</span>
+    </div>
+
+    <!-- Lihat Lainnya -->
+    <div class="sidebar-item flex items-center p-2 rounded-xl cursor-pointer text-zinc-400 hover:bg-zinc-800 transition">
+    </div>
+
+            <hr class="border-zinc-700 my-3 mx-4">
+
+    
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-grow p-3 transition-all duration-200">
+            
+            <!-- Video Player Section -->
+            <div id="video-player-section" class="video-container mb-4">
+                <div class="w-full bg-black aspect-video rounded-lg overflow-hidden shadow-xl">
+                    <iframe id="main-iframe" class="w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                
+                <!-- Info Video Utama -->
+                <div class="mt-3">
+                    <h1 id="playing-title" class="text-base font-bold line-clamp-2 leading-snug">Judul Video</h1>
+                    <div class="flex items-center justify-between mt-3 gap-2">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-zinc-700 mr-2 overflow-hidden flex-shrink-0">
+                                <img id="playing-avatar" src="" class="w-full h-full">
+                            </div>
+                            <div class="min-w-0">
+                                <h3 id="playing-channel" class="font-bold text-xs truncate">Nama Channel</h3>
+                                <p class="text-zinc-400 text-[10px]">991,2 jt sub</p>
+                            </div>
+                            <button class="ml-2 bg-white text-black px-3 py-1 rounded-full font-semibold text-xs hover:bg-zinc-200 transition-colors flex-shrink-0">Subscribe</button>
+                        </div>
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                            <button class="bg-zinc-800 px-3 py-1 rounded-full hover:bg-zinc-700 text-xs flex items-center transition-colors">
+                                <i class="far fa-thumbs-up mr-1 text-xs"></i> 992rb
+                            </button>
+                            <button id="share-btn" class="bg-zinc-800 px-3 py-1 rounded-full hover:bg-zinc-700 text-xs flex items-center transition-colors">
+                                <i class="fas fa-share mr-1 text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bagian Deskripsi Video -->
+                <div id="description-box" class="mt-4 bg-zinc-800 rounded-xl p-3 cursor-pointer hover:bg-zinc-700 transition-colors" onclick="toggleDescription()">
+                    <div class="flex flex-col">
+                        <div class="flex space-x-2 text-sm font-bold mb-1">
+                            <span id="playing-views">0x ditonton</span>
+                            <span id="playing-time">0 hari lalu</span>
+                            <span class="text-zinc-400 font-medium">#coding #tutorial</span>
+                        </div>
+                        <div id="video-description" class="text-sm text-zinc-200 whitespace-pre-wrap collapsed">Selamat datang di channel kami! Dalam video ini, kita akan membahas secara mendalam topik yang sangat menarik. Pastikan untuk menekan tombol subscribe dan nyalakan notifikasi agar tidak ketinggalan update terbaru dari kami.
+Ayo kita belajar bersama dan tingkatkan skill kita ke level selanjutnya! Jangan lupa bagikan video ini jika bermanfaat.
+                        </div>
+
+                        <!-- Fitur Produk Carousel / Slide 3 Halaman -->
+                        <div class="mt-4 pt-3 border-t border-zinc-700/60" onclick="event.stopPropagation()">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="fas fa-shopping-bag text-red-500"></i> Produk Direkomendasikan
+                                </span>
+                                <div class="flex items-center space-x-3">
+                                    <!-- Tombol Buka Keranjang Belanja -->
+                                    <button onclick="toggleCartModal(true); event.stopPropagation()" class="relative bg-zinc-700 hover:bg-zinc-600 px-2.5 py-1 rounded-full flex items-center text-xs font-medium text-white transition">
+                                        <i class="fas fa-shopping-cart mr-1 text-yellow-400"></i> Keranjang
+                                        <span id="cart-badge" class="ml-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden">0</span>
+                                    </button>
+                                    <span class="text-xs text-zinc-400 font-medium" id="product-slide-indicator">Halaman 1 dari 3</span>
+                                </div>
+                            </div>
+
+                            <div class="relative group/slider overflow-hidden rounded-xl bg-zinc-900 border border-zinc-700/50 p-2">
+                                <!-- Track Slide -->
+                                <div id="product-slider-track" class="flex transition-transform duration-300 ease-in-out">
+                                    
+                                    <!-- Slide Halaman 1 -->
+                                    <div class="w-full flex-shrink-0 px-1">
+                                        <div class="flex items-center space-x-3 bg-zinc-800/80 p-3 rounded-lg hover:bg-zinc-700/90 transition group/item">
+                                            <a href="https://tokopedia.com" target="_blank" class="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0 border border-zinc-700 block">
+                                                <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80" alt="Headphone Wireless" class="w-full h-full object-cover group-hover/item:scale-105 transition duration-300">
+                                            </a>
+                                            <div class="flex-grow min-w-0">
+                                                <span class="inline-block px-1.5 py-0.5 bg-red-600/20 text-red-400 text-[10px] font-semibold rounded mb-1">PROMO HARI INI</span>
+                                                <a href="https://tokopedia.com" target="_blank" class="block">
+                                                    <h4 class="text-sm font-bold text-white truncate group-hover/item:text-blue-400">Headphone Premium Wireless Noise Cancelling</h4>
+                                                </a>
+                                                <p class="text-xs text-emerald-400 font-semibold mt-1">Rp 1.250.000 <span class="text-[10px] text-zinc-400 line-through">Rp 1.999.000</span></p>
+                                                <div class="mt-2 flex items-center space-x-2">
+                                                    <button onclick="addToCart('Headphone Premium Wireless', 1250000, 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'); event.stopPropagation()" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition">
+                                                        <i class="fas fa-cart-plus"></i> + Keranjang
+                                                    </button>
+                                                    <a href="https://tokopedia.com" target="_blank" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition">
+                                                        Beli Direct <i class="fas fa-external-link-alt text-[10px]"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Slide Halaman 2 -->
+                                    <div class="w-full flex-shrink-0 px-1">
+                                        <div class="flex items-center space-x-3 bg-zinc-800/80 p-3 rounded-lg hover:bg-zinc-700/90 transition group/item">
+                                            <a href="https://shopee.co.id" target="_blank" class="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0 border border-zinc-700 block">
+                                                <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&auto=format&fit=crop&q=80" alt="Smartwatch Minimalis" class="w-full h-full object-cover group-hover/item:scale-105 transition duration-300">
+                                            </a>
+                                            <div class="flex-grow min-w-0">
+                                                <span class="inline-block px-1.5 py-0.5 bg-blue-600/20 text-blue-400 text-[10px] font-semibold rounded mb-1">BEST SELLER</span>
+                                                <a href="https://shopee.co.id" target="_blank" class="block">
+                                                    <h4 class="text-sm font-bold text-white truncate group-hover/item:text-blue-400">Smartwatch Minimalis Fitness & Heart Rate Tracker</h4>
+                                                </a>
+                                                <p class="text-xs text-emerald-400 font-semibold mt-1">Rp 450.000 <span class="text-[10px] text-zinc-400 line-through">Rp 800.000</span></p>
+                                                <div class="mt-2 flex items-center space-x-2">
+                                                    <button onclick="addToCart('Smartwatch Minimalis Fitness', 450000, 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'); event.stopPropagation()" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition">
+                                                        <i class="fas fa-cart-plus"></i> + Keranjang
+                                                    </button>
+                                                    <a href="https://shopee.co.id" target="_blank" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition">
+                                                        Beli Direct <i class="fas fa-external-link-alt text-[10px]"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Slide Halaman 3 -->
+                                    <div class="w-full flex-shrink-0 px-1">
+                                        <div class="flex items-center space-x-3 bg-zinc-800/80 p-3 rounded-lg hover:bg-zinc-700/90 transition group/item">
+                                            <a href="https://blibli.com" target="_blank" class="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0 border border-zinc-700 block">
+                                                <img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&auto=format&fit=crop&q=80" alt="Keyboard Mekanikal Gaming" class="w-full h-full object-cover group-hover/item:scale-105 transition duration-300">
+                                            </a>
+                                            <div class="flex-grow min-w-0">
+                                                <span class="inline-block px-1.5 py-0.5 bg-emerald-600/20 text-emerald-400 text-[10px] font-semibold rounded mb-1">STOK TERBATAS</span>
+                                                <a href="https://blibli.com" target="_blank" class="block">
+                                                    <h4 class="text-sm font-bold text-white truncate group-hover/item:text-blue-400">Keyboard Mekanikal Gaming RGB Wireless</h4>
+                                                </a>
+                                                <p class="text-xs text-emerald-400 font-semibold mt-1">Rp 780.000 <span class="text-[10px] text-zinc-400 line-through">Rp 1.100.000</span></p>
+                                                <div class="mt-2 flex items-center space-x-2">
+                                                    <button onclick="addToCart('Keyboard Mekanikal Gaming RGB', 780000, 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=200'); event.stopPropagation()" class="text-xs bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition">
+                                                        <i class="fas fa-cart-plus"></i> + Keranjang
+                                                    </button>
+                                                    <a href="https://blibli.com" target="_blank" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition">
+                                                        Beli Direct <i class="fas fa-external-link-alt text-[10px]"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Navigasi Tombol Panah -->
+                                <button onclick="slideProduct(-1); event.stopPropagation()" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center transition opacity-80 hover:opacity-100 z-10">
+                                    <i class="fas fa-chevron-left text-sm"></i>
+                                </button>
+                                <button onclick="slideProduct(1); event.stopPropagation()" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center transition opacity-80 hover:opacity-100 z-10">
+                                    <i class="fas fa-chevron-right text-sm"></i>
+                                </button>
+                            </div>
+
+                            <!-- Indikator Halaman (Dots) -->
+                            
+                        </div>
+                    </div>
+                </div>
+
+                <div id="categories" class="category-chips flex space-x-3 mb-6 overflow-x-auto whitespace-nowrap pb-2 no-scrollbar">
+                    <button class="cat-btn bg-white text-black px-3 py-1.5 rounded-lg text-sm font-medium" onclick="renderVideos('Semua')">Semua</button>
+                    <button class="cat-btn bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium" onclick="renderVideos('satu')">Hiburan</button>
+                    <button class="cat-btn bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium" onclick="renderVideos('dua')">Cards Id Purwanto</button>
+                </div>
+
+                    <div class="flex space-x-4 mb-8">
+                </div></div>
+                        
+            <div id="categories" class="category-chips flex space-x-3 mb-6 overflow-x-auto whitespace-nowrap pb-2 no-scrollbar">
+                <button class="cat-btn bg-white text-black px-3 py-1.5 rounded-lg text-sm font-medium" onclick="renderVideos('Semua')">Semua</button>
+                <button class="cat-btn bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium" onclick="renderVideos('satu')">Hiburan</button>
+                <button class="cat-btn bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium" onclick="renderVideos('dua')">Cards Id Purwanto</button>
+            </div>
+
+            <!-- Video Grid (Mobile Responsive 1 Column) -->
+            <div id="dynamic-content">
+                <div id="video-grid" class="grid grid-cols-1 gap-y-4">
+                </div>
+            </div>
+        </main>
+    </div>
+  </div>
+
+    <!-- Modal Bagikan -->
+    <div id="share-modal" class="modal-overlay fixed inset-0 px-4">
+        <div class="bg-zinc-900 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-medium">Bagikan</h2>
+                <button id="close-modal" class="p-2 hover:bg-zinc-800 rounded-full">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex space-x-4 overflow-x-auto no-scrollbar pb-4 mb-6">
+    <!-- WhatsApp -->
+    <div class="flex flex-col items-center space-y-2 cursor-pointer flex-shrink-0">
+        <div class="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl hover:opacity-80 transition"><i class="fab fa-whatsapp"></i></div>
+        <span class="text-xs text-zinc-400">WhatsApp</span>
+    </div>
+
+    <!-- Facebook -->
+    <div class="flex flex-col items-center space-y-2 cursor-pointer flex-shrink-0">
+        <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl hover:opacity-80 transition"><i class="fab fa-facebook-f"></i></div>
+        <span class="text-xs text-zinc-400">Facebook</span>
+    </div>
+
+    <!-- Instagram (Tambahan) -->
+    <div class="flex flex-col items-center space-y-2 cursor-pointer flex-shrink-0">
+        <div class="w-14 h-14 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl hover:opacity-80 transition"><i class="fab fa-instagram"></i></div>
+        <span class="text-xs text-zinc-400">Instagram</span>
+    </div>
+
+    <!-- Telegram (Tambahan) -->
+    <div class="flex flex-col items-center space-y-2 cursor-pointer flex-shrink-0">
+        <div class="w-14 h-14 bg-sky-500 rounded-full flex items-center justify-center text-white text-2xl hover:opacity-80 transition"><i class="fab fa-telegram-plane"></i></div>
+        <span class="text-xs text-zinc-400">Telegram</span>
+    </div>
+    <!-- TikTok (Tambahan) -->
+    <div class="flex flex-col items-center space-y-2 cursor-pointer flex-shrink-0">
+        <div class="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white text-2xl hover:opacity-80 transition border border-zinc-700"><i class="fab fa-tiktok"></i></div>
+        <span class="text-xs text-zinc-400">TikTok</span>
+    </div>
+
+</div>
+
+            <div class="bg-black border border-zinc-800 rounded-xl flex items-center p-1 pl-4">
+                <input id="share-url" type="text" readonly class="bg-transparent flex-grow text-sm outline-none text-zinc-300">
+                <button onclick="copyShareUrl()" class="bg-blue-600 hover:bg-blue-700 text-black font-semibold px-6 py-2 rounded-full text-sm ml-2">Salin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Keranjang Belanja & Pesan WhatsApp -->
+    <div id="cart-modal" class="modal-overlay fixed inset-0 px-4">
+        <div class="bg-zinc-900 w-full max-w-md rounded-2xl p-6 shadow-2xl relative border border-zinc-800">
+            <div class="flex justify-between items-center mb-4 border-b border-zinc-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-shopping-cart text-yellow-500 text-xl"></i>
+                    <h2 class="text-lg font-bold text-white">Keranjang Belanja Anda</h2>
+                </div>
+                <button onclick="toggleCartModal(false)" class="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <!-- List Produk dalam Keranjang -->
+            <div id="cart-items-container" class="max-h-60 overflow-y-auto custom-scrollbar space-y-3 mb-4 pr-1">
+                <!-- Diisi via JavaScript -->
+            </div>
+
+            <!-- Total Pembayaran & Checkout -->
+            <div class="border-t border-zinc-800 pt-4">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-sm font-semibold text-zinc-400">Total Biaya:</span>
+                    <span id="cart-total-price" class="text-lg font-bold text-emerald-400">Rp 0</span>
+                </div>
+                
+                <button id="whatsapp-order-btn" onclick="sendWhatsAppOrder()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fab fa-whatsapp text-2xl"></i>
+                    <span>Pesan Sekarang via WhatsApp</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const videoData = [
+    { id: 'zC08dxToTb8', category: 'satu', title: 'youTube tanpa iklan', channel: 'Cards Id Purwanto', views: '1,2 Juta', time: '2 bln lalu', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' },
+    { id: 'zC08dxToTb8', category: 'satu', title: 'youTube tanpa iklan', channel: 'Web Programming ID', views: '850 Rb', time: '1 bln lalu', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80' },
+    { id: '_zVRqCtMRxs', category: 'satu', title: 'youTube tanpa iklan', channel: 'Dev Indonesia', views: '500 Rb', time: '3 minggu lalu', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' },
+    { id: '_zVRqCtMRxs', category: 'satu', title: 'youTube tanpa iklan', channel: 'Frontend Masters', views: '320 Rb', time: '5 hari lalu', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=150&auto=format&fit=crop&q=80' },
+    { id: 'g6B159pL-u0', category: 'dua', title: 'youTube tanpa iklan', channel: 'Cards Id Purwanto', views: '2,5 Juta', time: '4 bln lalu', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' },
+    { id: 'ed8SzALpx1Q', category: 'dua', title: 'youTube tanpa iklan', channel: 'Cards Id Purwanto', views: '980 Rb', time: '2 bln lalu', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' },
+    { id: 'M576WGiDBdQ', category: 'dua', title: 'youTube tanpa iklan', channel: 'Cards Id Purwanto', views: '1,5 Juta', time: '1 thn lalu', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' },
+    { id: 'LDB4uaJ87e0', category: 'dua', title: 'youTube tanpa iklan', channel: 'Cards Id Purwanto', views: '750 Rb', time: '3 bln lalu', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' }
+];
+
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const playerSection = document.getElementById('video-player-section');
+        const iframe = document.getElementById('main-iframe');
+        const playingTitle = document.getElementById('playing-title');
+        const playingChannel = document.getElementById('playing-channel');
+        const playingAvatar = document.getElementById('playing-avatar');
+        const shareUrlInput = document.getElementById('share-url');
+
+        // Comment & Desc elements
+        const commentInput = document.getElementById('comment-input');
+        const commentActions = document.getElementById('comment-actions');
+        const submitCommentBtn = document.getElementById('submit-comment');
+        const cancelCommentBtn = document.getElementById('cancel-comment');
+
+        function renderVideos(filter = 'Semua') {
+            const container = document.getElementById('video-grid');
+            container.innerHTML = ''; 
+
+            const filteredData = filter === 'Semua' 
+                ? videoData 
+                : videoData.filter(v => v.category === filter);
+
+            filteredData.forEach(video => {
+                // RUMUS THUMBNAIL OTOMATIS
+                const autoThumb = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`;
+                // LINK VIDEO ASLI
+                const videoLink = `https://www.youtube.com/watch?v=${video.id}`;
+
+                container.innerHTML += `
+                    <div class="video-card cursor-pointer group" onclick="playVideo('${video.id}', '${video.title}', '${video.channel}', '${video.avatar}', '${video.views}', '${video.time}')">
+                        <div class="relative aspect-video rounded-xl overflow-hidden mb-3 bg-zinc-800">
+                            <img src="${autoThumb}" 
+                                 onerror="this.src='https://img.youtube.com/vi/${video.id}/hqdefault.jpg'" 
+                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+                                 alt="${video.title}">
+                        </div>
+                        <div class="flex space-x-3">
+                            <img src="${video.avatar}" class="w-9 h-9 rounded-full bg-zinc-800" alt="avatar">
+                            <div class="flex-1">
+                                <h3 class="text-sm font-semibold line-clamp-2 leading-snug mb-1 text-white">${video.title}</h3>
+                                <p class="text-xs text-zinc-400">${video.channel}</p>
+                                <p class="text-xs text-zinc-400">${video.views} • ${video.time}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Perbarui gaya tombol kategori aktif
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.innerText === filter) {
+                    btn.classList.add('bg-white', 'text-black');
+                    btn.classList.remove('bg-zinc-800', 'text-white');
+                } else {
+                    btn.classList.remove('bg-white', 'text-black');
+                    btn.classList.add('bg-zinc-800', 'text-white');
+                }
+            });
+        }
+
+        function playVideo(id, title, channel, avatar, views, time) {
+            document.body.classList.add('playing');
+            playerSection.style.display = 'block';
+            iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+            playingTitle.innerText = title;
+            playingChannel.innerText = channel;
+            playingAvatar.src = avatar;
+            document.getElementById('playing-views').innerText = `${views} ditonton`;
+            document.getElementById('playing-time').innerText = time;
+            shareUrlInput.value = `https://youtu.be/${id}`;
+            
+            // Layout Desktop Adjustment (Sidebar recommendations)
+            if (window.innerWidth >= 1024) {
+                const mainContent = document.getElementById('main-content');
+                if (!document.getElementById('video-col')) {
+                    const videoCol = document.createElement('div');
+                    videoCol.id = "video-col";
+                    videoCol.className = "flex-grow";
+                    const recCol = document.createElement('div');
+                    recCol.id = "rec-col";
+                    recCol.className = "lg:w-[400px] flex-shrink-0";
+                    
+                    mainContent.classList.add('flex', 'flex-col', 'lg:flex-row', 'gap-6');
+                    videoCol.appendChild(playerSection);
+                    recCol.innerHTML = '<h3 class="font-bold mb-4 px-2">Video Terkait</h3><div id="video-grid" class="flex flex-col space-y-4"></div>';
+                    
+                    mainContent.innerHTML = '';
+                    mainContent.appendChild(videoCol);
+                    mainContent.appendChild(recCol);
+                    renderVideos();
+                }
+            // Layout Mobile Friendly Adjustment
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            toggleSidebar(false);
+        }
+    }
+
+        function toggleDescription() {
+            const desc = document.getElementById('video-description');
+            const btn = document.getElementById('expand-desc-btn');
+            desc.classList.toggle('collapsed');
+            btn.innerText = desc.classList.contains('collapsed') ? 'Lebih banyak' : 'Lebih sedikit';
+        }
+
+        /* --- FITUR SLIDE PRODUK --- */
+        let currentProductSlide = 0;
+        const totalProductSlides = 3;
+        let productAutoSlideInterval = null;
+
+        function setProductSlide(index) {
+            currentProductSlide = index;
+            const track = document.getElementById('product-slider-track');
+            const indicator = document.getElementById('product-slide-indicator');
+            if (track) {
+                track.style.transform = `translateX(-${currentProductSlide * 100}%)`;
+            }
+            if (indicator) {
+                indicator.innerText = `Halaman ${currentProductSlide + 1} dari ${totalProductSlides}`;
+            }
+
+            for (let i = 0; i < totalProductSlides; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                if (dot) {
+                    if (i === currentProductSlide) {
+                        dot.classList.add('bg-white', 'w-4');
+                        dot.classList.remove('bg-zinc-600', 'w-2');
+                    } else {
+                        dot.classList.remove('bg-white', 'w-4');
+                        dot.classList.add('bg-zinc-600', 'w-2');
+                    }
+                }
+            }
+        }
+
+        function slideProduct(direction) {
+            currentProductSlide = (currentProductSlide + direction + totalProductSlides) % totalProductSlides;
+            setProductSlide(currentProductSlide);
+            resetAutoSlide();
+        }
+
+        function startAutoSlide() {
+            if (!productAutoSlideInterval) {
+                productAutoSlideInterval = setInterval(() => {
+                    slideProduct(1);
+                }, 5000);
+            }
+        }
+
+        function resetAutoSlide() {
+            if (productAutoSlideInterval) {
+                clearInterval(productAutoSlideInterval);
+                productAutoSlideInterval = null;
+            }
+            startAutoSlide();
+        }
+
+        /* --- FITUR KERANJANG BELANJA & WHATSAPP --- */
+        let cartItems = [];
+
+        function addToCart(name, price, img) {
+            const existingIndex = cartItems.findIndex(item => item.name === name);
+            if (existingIndex > -1) {
+                cartItems[existingIndex].qty += 1;
+            } else {
+                cartItems.push({ name, price, img, qty: 1 });
+            }
+            updateCartUI();
+            toggleCartModal(true);
+        }
+
+        function changeQty(index, delta) {
+            cartItems[index].qty += delta;
+            if (cartItems[index].qty <= 0) {
+                cartItems.splice(index, 1);
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items-container');
+            const badge = document.getElementById('cart-badge');
+            const totalPriceEl = document.getElementById('cart-total-price');
+            const orderBtn = document.getElementById('whatsapp-order-btn');
+
+            const totalCount = cartItems.reduce((sum, item) => sum + item.qty, 0);
+            const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            if (badge) {
+                badge.innerText = totalCount;
+                if (totalCount > 0) {
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            if (totalPriceEl) {
+                totalPriceEl.innerText = `Rp ${totalPrice.toLocaleString('id-ID')}`;
+            }
+
+            if (orderBtn) {
+                orderBtn.disabled = cartItems.length === 0;
+            }
+
+            if (container) {
+                if (cartItems.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-zinc-400">
+                            <i class="fas fa-shopping-basket text-4xl mb-2 opacity-40"></i>
+                            <p class="text-xs">Keranjang belanja Anda masih kosong.</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = cartItems.map((item, i) => `
+                        <div class="flex items-center justify-between bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-700/50">
+                            <div class="flex items-center space-x-3 min-w-0">
+                                <img src="${item.img}" class="w-12 h-12 rounded-lg object-cover bg-black flex-shrink-0">
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                                    <p class="text-xs text-emerald-400 font-semibold">Rp ${item.price.toLocaleString('id-ID')}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 flex-shrink-0">
+                                <button onclick="changeQty(${i}, -1)" class="w-6 h-6 rounded-md bg-zinc-700 hover:bg-zinc-600 text-white flex items-center justify-center text-xs font-bold">-</button>
+                                <span class="text-xs font-bold text-white w-4 text-center">${item.qty}</span>
+                                <button onclick="changeQty(${i}, 1)" class="w-6 h-6 rounded-md bg-zinc-700 hover:bg-zinc-600 text-white flex items-center justify-center text-xs font-bold">+</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        function toggleCartModal(show) {
+            const modal = document.getElementById('cart-modal');
+            if (modal) {
+                if (show) {
+                    modal.classList.add('active');
+                } else {
+                    modal.classList.remove('active');
+                }
+            }
+        }
+
+        function sendWhatsAppOrder() {
+            if (cartItems.length === 0) return;
+            const phoneNumber = "6281234567890"; // Ganti nomor WhatsApp tujuan
+            let message = "Halo, saya ingin memesan produk berikut dari YouTube Pembelajaran:\n\n";
+            
+            let total = 0;
+            cartItems.forEach((item, index) => {
+                const subtotal = item.price * item.qty;
+                total += subtotal;
+                message += `${index + 1}. *${item.name}* x${item.qty}\n   Harga: Rp ${subtotal.toLocaleString('id-ID')}\n`;
+            });
+            
+            message += `\n*Total Pembayaran: Rp ${total.toLocaleString('id-ID')}*`;
+            
+            const encodedMessage = encodeURIComponent(message);
+            window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+        }
+
+        function toggleSidebar(force) {
+            const isOpening = typeof force === 'boolean' ? force : !sidebar.classList.contains('open');
+            if (window.innerWidth < 768) {
+                sidebar.classList.toggle('open', isOpening);
+                overlay.classList.toggle('active', isOpening);
+                document.body.style.overflow = isOpening ? 'hidden' : 'auto';
+            } else {
+                const main = document.getElementById('main-content');
+                sidebar.classList.toggle('w-60');
+                sidebar.classList.toggle('w-20');
+                sidebar.classList.toggle('hide-text');
+                main.classList.toggle('md:ml-60');
+                main.classList.toggle('md:ml-20');
+            }
+        }
+
+        if (commentInput) {
+            commentInput.addEventListener('focus', () => {
+                if (commentActions) commentActions.style.display = 'flex';
+            });
+            commentInput.addEventListener('input', () => {
+                if (submitCommentBtn) {
+                    if (commentInput.value.trim().length > 0) {
+                        submitCommentBtn.classList.remove('bg-zinc-800', 'text-zinc-500', 'cursor-not-allowed');
+                        submitCommentBtn.classList.add('bg-blue-600', 'text-black', 'cursor-pointer');
+                        submitCommentBtn.disabled = false;
+                    } else {
+                        submitCommentBtn.classList.add('bg-zinc-800', 'text-zinc-500', 'cursor-not-allowed');
+                        submitCommentBtn.classList.remove('bg-blue-600', 'text-black', 'cursor-pointer');
+                        submitCommentBtn.disabled = true;
+                    }
+                }
+            });
+        }
+
+        if (cancelCommentBtn) {
+            cancelCommentBtn.addEventListener('click', () => {
+                commentInput.value = '';
+                commentActions.style.display = 'none';
+            });
+        }
+
+        document.getElementById('menu-btn').addEventListener('click', () => toggleSidebar());
+        overlay.addEventListener('click', () => toggleSidebar(false));
+
+        document.getElementById('notif-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('notif-dropdown').classList.toggle('active');
+            document.getElementById('notif-count').classList.add('hidden');
+        });
+
+        document.getElementById('share-btn').addEventListener('click', () => {
+            document.getElementById('share-modal').classList.add('active');
+        });
+
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('share-modal').classList.remove('active');
+        });
+
+        function copyShareUrl() {
+            shareUrlInput.select();
+            document.execCommand('copy');
+            alert("Link berhasil disalin!");
+        }
+
+        // Jalankan render pertama kali
+        renderVideos();
+        updateCartUI();
+        startAutoSlide();
+    </script>
+</body>
+</html>
